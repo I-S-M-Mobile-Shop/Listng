@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LAHZH AI Product Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><b>LAHZH PRODUCTS</b><span>AI Product Studio</span></div>
+  <div class="stats" id="stats"></div>
+</header>
+<main>
+<section class="card">
+  <h2>الإعدادات</h2>
+  <div class="grid">
+    <label class="wide">مفتاح Gemini API
+      <div class="row"><input id="apiKey" type="password" dir="ltr" placeholder="AIza..." autocomplete="off">
+      <button class="ghost" id="showKey" type="button">إظهار</button>
+      <button class="ghost" id="clearKey" type="button">مسح المفتاح</button></div></label>
+    <label>النموذج <input id="model" list="models" dir="ltr" value="gemini-3.8-flash"></label>
+    <datalist id="models"><option value="gemini-3.8-flash"></datalist>
+    <label>منتجات في كل طلب <input id="batchSize" type="number" min="1" max="20" value="5"></label>
+    <label>الحد الأقصى للطلبات في الدقيقة <input id="rpm" type="number" min="1" max="60" value="8"></label>
+    <label class="chk"><input id="useImg" type="checkbox"> تحليل الصور بالذكاء الاصطناعي (صور مرفوعة أو روابط تسمح بالتحميل)</label>
+    <label class="chk"><input id="redo" type="checkbox"> إعادة توليد المنتجات المكتملة</label>
+  </div>
+  <details class="note"><summary>كيف يُستخدم المفتاح وحدود الخطة المجانية</summary>
+    <p>المفتاح يُحفظ في متصفحك فقط (localStorage) ويُرسل مباشرة إلى Google عند التوليد، ولا يمر بأي خادم آخر. احصل على مفتاح مجاني من <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.</p>
+    <p>الخطة المجانية لها حد للطلبات في الدقيقة وحد يومي يختلف حسب النموذج وقد يتغير. التطبيق يجمع عدة منتجات في طلب واحد، يفصل بين الطلبات حسب الحد الذي تحدده، ويعيد المحاولة تلقائياً عند الخطأ 429. لا تستخدم الموقع على جهاز عام، واحذف المفتاح بعد الانتهاء.</p>
+  </details>
+</section>
+
+<section class="card">
+  <h2>رفع الكتالوج</h2>
+  <div class="row"><input type="file" id="file" accept=".xlsx,.xls,.csv"><select id="sheet" hidden></select></div>
+  <div id="mapBox" hidden>
+    <p class="hint">تم اكتشاف الأعمدة تلقائياً. عدّل الربط عند الحاجة، ثم اعتمده.</p>
+    <div class="grid" id="mapping"></div>
+    <button id="applyMap">اعتماد الربط وعرض المنتجات</button>
+  </div>
+</section>
+
+<section class="card" id="prodCard" hidden>
+  <h2>المنتجات</h2>
+  <div class="bar">
+    <input id="search" type="search" placeholder="بحث بالـ SKU أو الاسم أو العنوان">
+    <select id="statusF"><option value="">كل الحالات</option><option value="pending">معلّق</option><option value="done">مكتمل</option><option value="failed">فشل</option><option value="missing">معلومات ناقصة</option></select>
+    <button class="ghost" id="selVis">تحديد الظاهر</button>
+    <button class="ghost" id="selMissing">تحديد غير المكتمل</button>
+    <button class="ghost" id="selNone">إلغاء التحديد</button>
+  </div>
+  <div class="bar">
+    <button id="genSel">توليد المحدد</button>
+    <button id="genAll">توليد كل غير المكتمل</button>
+    <button class="ghost" id="retry">إعادة المحاولة للفاشل</button>
+    <button class="danger" id="stop" hidden>إيقاف</button>
+  </div>
+  <div class="prog" id="prog" hidden><div id="progBar"></div><span id="progTxt"></span></div>
+  <div class="scroll"><table>
+    <thead><tr><th><input type="checkbox" id="selAll"></th><th>صورة</th><th>SKU</th><th>الاسم العربي</th><th>السعر</th><th>الحالة</th><th>العنوان الإنجليزي</th><th></th></tr></thead>
+    <tbody id="tbody"></tbody></table></div>
+</section>
+
+<section class="card" id="expCard" hidden>
+  <h2>التصدير</h2>
+  <p class="hint">أعمدة المحتوى المولّد المراد إضافتها لملف Excel (الأعمدة الأصلية تُحفظ كما هي دائماً)</p>
+  <div class="checks" id="expCols"></div>
+  <div class="row"><label>المنتجات المصدّرة <select id="scope"><option value="done">المكتملة فقط</option><option value="selected">المحددة</option><option value="all">الكل</option></select></label></div>
+  <div class="bar">
+    <button id="exFull">تصدير الكتالوج + المحتوى</button>
+    <button class="ghost" id="exAmz">قالب Amazon</button>
+    <button class="ghost" id="exNoon">قالب Noon</button>
+  </div>
+  <p class="hint">قالبا Amazon وNoon يستخدمان أسماء أعمدة شائعة. قارنهما بالقالب الرسمي لفئتك في لوحة البائع وانسخ البيانات إليه قبل الرفع.</p>
+</section>
+</main>
+
+<dialog id="dlg"><form method="dialog" id="dlgForm">
+  <h3 id="dTitle"></h3>
+  <div class="dgrid">
+    <div class="dimg"><img id="dImg" alt=""><label class="up">رفع صورة<input type="file" id="dUp" accept="image/*"></label></div>
+    <div class="dfields" dir="ltr">
+      <label>Title<input id="fTitle"></label>
+      <label>Description<textarea id="fDesc" rows="5"></textarea></label>
+      <label>Bullet points (one per line)<textarea id="fBul" rows="5"></textarea></label>
+      <label>SEO Title<input id="fSeoT"></label>
+      <label>SEO Description<textarea id="fSeoD" rows="2"></textarea></label>
+      <label>Keywords (comma separated)<input id="fKw"></label>
+      <label>Features (one per line)<textarea id="fFeat" rows="3"></textarea></label>
+      <label>Brand<input id="fBrand"></label>
+      <label>Suggested category<input id="fCat"></label>
+      <label class="warnL">Missing information (one per line)<textarea id="fMiss" rows="3"></textarea></label>
+    </div>
+  </div>
+  <div class="bar"><button type="button" id="dSave">حفظ</button><button type="button" class="ghost" id="dGen">توليد هذا المنتج</button><button type="button" class="ghost" id="dClose">إغلاق</button></div>
+</form></dialog>
+<div id="toast" role="status"></div>
+<script src="script.js"></script>
+</body>
+</html>
